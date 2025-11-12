@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Safe Login — using safe-library</title>
+  <style>
+    :root{ --bg1:#0f172a; --bg2:#0b1220; --muted:#6b7280; --accent:#7c3aed; --accent-2:#6366f1; }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{ margin:0; font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(124,58,237,0.12), transparent 6%),
+                  linear-gradient(180deg,var(--bg1),var(--bg2));
+      color:#0b1220; display:flex; align-items:center; justify-content:center; padding:28px;
+    }
+    .card{ width:100%; max-width:520px; background:linear-gradient(180deg,#fff,#fafafa); border-radius:16px; box-shadow:0 14px 50px rgba(2,6,23,0.6); padding:28px; }
+    h1{ margin:0 0 6px; font-size:22px; }
+    .form-row{ margin-bottom:12px; position:relative; }
+    label{ display:block; font-size:13px; color:#374151; margin-bottom:6px; }
+    input, select{ width:100%; padding:12px 14px; border-radius:10px; border:1px solid #e6e9ef; font-size:15px; }
+    .controls{ display:flex; gap:10px; margin-top:6px; flex-wrap:wrap; }
+    .btn{ padding:10px 14px; border-radius:10px; font-weight:600; font-size:14px; cursor:pointer; border:none; }
+    .btn-primary{ background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:#fff; }
+    .btn-ghost{ background:transparent; border:1px solid #e6e9ef; }
+    .btn-danger{ background:transparent; border:1px solid rgba(239,68,68,0.12); color:#ef4444; }
+    .message{ margin-top:14px; padding:12px; border-radius:10px; font-size:13px; display:none; }
+    .msg-success{ background:#ecfdf5; color:#065f46; }
+    .msg-error{ background:#fff1f2; color:#991b1b; }
+  </style>
+
+  <!-- Import map to simulate NPM-style library import -->
+  <script type="importmap">
+  {
+    "imports": {
+      "safe-library": "./safe-library/index.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div class="card">
+    <h1>Sign In</h1>
+    <p>Demo using <code>safe-library</code> (AES-GCM encryption with expiry).</p>
+    <div class="form-row">
+      <label>Username</label>
+      <input id="username" type="text" placeholder="username" />
+    </div>
+    <div class="form-row">
+      <label>Password</label>
+      <input id="password" type="password" placeholder="password" />
+    </div>
+    <div class="form-row">
+      <label>Auto-delete after</label>
+      <select id="expiry">
+        <option value="900">15 minutes</option>
+        <option value="3600" selected>1 hour</option>
+        <option value="86400">1 day</option>
+        <option value="0">Never</option>
+      </select>
+    </div>
+    <div class="controls">
+      <button id="saveBtn" class="btn btn-primary">Save Encrypted</button>
+      <button id="showBtn" class="btn btn-ghost">Show Stored</button>
+      <button id="clearBtn" class="btn btn-danger">Clear Storage</button>
+    </div>
+    <div id="msg" class="message"></div>
+  </div>
+
+  <script type="module">
+    import safeLibrary from "safe-library";
+    const { SecureStorage } = safeLibrary;
+
+    const $u=document.getElementById('username');
+    const $p=document.getElementById('password');
+    const $save=document.getElementById('saveBtn');
+    const $show=document.getElementById('showBtn');
+    const $clear=document.getElementById('clearBtn');
+    const $msg=document.getElementById('msg');
+
+    function showMessage(text,type='info'){
+      $msg.style.display='block';
+      $msg.textContent=text;
+      $msg.className='message '+(type==='error'?'msg-error':type==='success'?'msg-success':'');
+    }
+
+    $save.onclick=async()=>{
+      const user=$u.value.trim(), pass=$p.value.trim(), exp=Number(document.getElementById('expiry').value);
+      if(!user||!pass)return showMessage('Enter both username & password','error');
+      try{
+        await SecureStorage.init({passphrase:pass});
+        await SecureStorage.setItem('credentials',{user,pass},exp===0?null:exp);
+        showMessage('Encrypted credentials saved!','success');
+        $u.value='';$p.value='';
+      }catch(e){console.error(e);showMessage('Failed to save.','error');}
+    };
+
+    $show.onclick=async()=>{
+      try{
+        let creds=await SecureStorage.getItem('credentials');
+        if(!creds){
+          const pass=prompt('Enter passphrase to decrypt:');
+          if(!pass)return;
+          await SecureStorage.init({passphrase:pass});
+          creds=await SecureStorage.getItem('credentials');
+        }
+        if(!creds)return showMessage('No data or wrong passphrase.','error');
+        showMessage(`Decrypted → ${creds.user}:${creds.pass}`,'success');
+      }catch(e){showMessage('Error reading data','error');}
+    };
+
+    $clear.onclick=()=>{
+      SecureStorage.clear();
+      showMessage('Storage cleared.','success');
+    };
+  </script>
+</body>
+</html>
