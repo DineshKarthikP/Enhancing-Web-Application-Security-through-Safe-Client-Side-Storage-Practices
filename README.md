@@ -126,7 +126,7 @@ safe-website/
 ### 1️⃣ Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/secure-storage-workflow.git
+git clone https://github.com/DineshKarthikP/Enhancing-Web-Application-Security-through-Safe-Client-Side-Storage-Practices.git
 cd secure-storage-workflow
 ```
 
